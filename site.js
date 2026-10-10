@@ -89,7 +89,7 @@ function normalizeCategory(value){
 function catalogLink(category){return category && category!=="All Products" ? "products.html?group="+encodeURIComponent(category):"products.html";}
 function installSiteNavigation(){
  const header=document.createElement("header");header.className="site-header";
- header.innerHTML='<button class="site-menu-button" aria-label="Open menu" aria-expanded="false" aria-controls="sideMenu">☰</button><a class="site-brand" href="index.html">FOX SQUAD SWAG</a><a class="site-cart" href="cart.html" aria-label="View cart">🛒<span id="cartCount" class="cart-count"></span></a>';
+ header.innerHTML='<button class="site-menu-button" aria-label="Open menu" aria-expanded="false" aria-controls="sideMenu">☰</button><a class="site-brand" href="index.html"><img class="site-brand-logo" src="Images/Transparent%20fox%20logo.png" alt=""><span>FOX SQUAD SWAG</span><img class="site-brand-logo" src="Images/Transparent%20fox%20logo.png" alt=""></a><a class="site-cart" href="cart.html" aria-label="View cart">🛒<span id="cartCount" class="cart-count"></span></a>';
  document.body.prepend(header);
  const overlay=document.createElement("div");overlay.className="site-overlay";overlay.hidden=true;
  const menu=document.createElement("nav");menu.id="sideMenu";menu.className="site-menu";menu.hidden=true;menu.setAttribute("aria-label","Main navigation");
