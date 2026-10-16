@@ -11,6 +11,7 @@ function addToCart(item) {
 
     cart.push({
         name: item.name,
+        productId: item.productId || "",
         price: Number(item.price),
         quantity: item.quantity || 1,
         sizeGroup: item.sizeGroup || "",
@@ -135,14 +136,14 @@ async function loadProducts() {
         const active = status ? status !== "discontinued" : /^(true|yes|1)$/i.test(r.Active || "");
         const rawPrice = r["New Price"] || r.Price || "";
         const price = rawPrice === "" ? null : Number(rawPrice.replace(/[$,]/g, ""));
-        const imageRow = imagesByProduct.get(name);
+        const imageRow = imageRows.find(img => (r["Product ID"] && img["Product ID"] === r["Product ID"]) || (!img["Product ID"] && String(img.Product || "").trim().toLowerCase() === name.trim().toLowerCase()));
         const photos = imageRow
             ? Object.keys(imageRow)
                 .filter(key => /^Image \d+$/i.test(key) && imageRow[key])
                 .map(key => ({ image: imageRow[key] }))
             : [];
 
-        return { ...base, name, active, status,
+        return { ...base, id: r["Product ID"] || makeProductId(name), vendor: r.Vendor || "Anthrax", name, active, status,
             price: Number.isFinite(price) ? price : null,
             pricePending: status === "price pending" || price === null || !Number.isFinite(price),
             new: /^(true|yes|1)$/i.test(r.New || ""),
@@ -174,7 +175,7 @@ async function loadImageRows() {
 
 function applyImagesToProduct(product, imageRows) {
     const normalize = value => String(value || "").trim().toLowerCase();
-    const imageRow = imageRows.find(r => normalize(r.Product) === normalize(product.name));
+    const imageRow = imageRows.find(r => (product.id && r["Product ID"] === product.id) || (!r["Product ID"] && normalize(r.Product) === normalize(product.name)));
     product.coverImage = imageRow?.["Cover Images"] || "";
     product.photos = imageRow
         ? Object.keys(imageRow)
@@ -194,7 +195,7 @@ async function loadProductTabs(product) {
 
     applyImagesToProduct(product, photos);
 
-    const optionRows = options.filter(r => r.Item === product.name && r["Field Label"]);
+    const optionRows = options.filter(r => r["Field Label"] && ((product.id && r["Product ID"] === product.id) || (!r["Product ID"] && String(r.Item || "").trim().toLowerCase() === product.name.trim().toLowerCase())));
     const normalized = value => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
     product.orderFields = optionRows.map((r, i) => {
         const declaredType = normalized(r["Field Type"]);
