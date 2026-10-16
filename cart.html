@@ -76,6 +76,9 @@ body{
         <input id="customerFirstName" type="text" required autocomplete="given-name" placeholder="First name" style="padding:12px; border-radius:8px; border:1px solid #555; margin:8px 0 12px; width:min(320px, 90%); font-size:16px;"><br>
         <label for="customerLastName"><strong>Last name</strong></label><br>
         <input id="customerLastName" type="text" required autocomplete="family-name" placeholder="Last name" style="padding:12px; border-radius:8px; border:1px solid #555; margin:8px 0 12px; width:min(320px, 90%); font-size:16px;">
+        <label for="customerEmail"><strong>Email address</strong></label><br>
+        <input id="customerEmail" type="email" required autocomplete="email" placeholder="you@example.com" style="padding:12px; border-radius:8px; border:1px solid #555; margin:8px 0 12px; width:min(320px, 90%); font-size:16px;">
+        <p style="color:#bbb;font-size:14px;">Use the same email for future order updates. Secure order retrieval is being configured.</p>
     </div>
 
     <div class="cart-actions"><a class="button" href="products.html">Continue Shopping</a>
@@ -170,19 +173,21 @@ async function submitOrder(){
     const cart = getCart();
     const firstInput = document.getElementById("customerFirstName");
     const lastInput = document.getElementById("customerLastName");
+    const emailInput = document.getElementById("customerEmail");
     const submitButton = document.getElementById("submitOrderButton");
     const firstName = firstInput.value.trim();
     const lastName = lastInput.value.trim();
     const customerName = firstName + " " + lastName;
+    const customerEmail = emailInput.value.trim().toLowerCase();
 
     if(cart.length === 0){
         alert("Your cart is empty.");
         return;
     }
 
-    if(!firstName || !lastName){
+    if(!firstName || !lastName || !emailInput.validity.valid || !customerEmail){
         alert("Please enter your name before submitting your order.");
-        (!firstName ? firstInput : lastInput).focus();
+        (!firstName ? firstInput : !lastName ? lastInput : emailInput).focus();
         return;
     }
 
@@ -204,17 +209,14 @@ async function submitOrder(){
                 customerName: customerName,
                 firstName: firstName,
                 lastName: lastName,
+                customerEmail: customerEmail,
                 items: cart,
                 orderTotal: orderTotal
             })
         });
 
-        saveCart([]);
-        updateCartCount();
-        renderCart();
-        firstInput.value = "";
-        lastInput.value = "";
-        alert("Order submitted! Thank you, " + customerName + ".");
+        localStorage.setItem("foxSquadLastSubmission", JSON.stringify({customerName,customerEmail,items:cart,submittedAt:new Date().toISOString()}));
+        alert("Order request sent. Your cart has been kept so you can review it. Please confirm with the organizer that your order was received; automatic confirmation and email recall are not active yet.");
     } catch(error) {
         console.error("Order submission failed:", error);
         alert("There was a problem submitting your order. Please try again.");
