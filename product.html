@@ -104,10 +104,11 @@ function renderProduct(product){
         <img id="mainProductImage" class="main-product-image" src="${escapeHTML(image)}" alt="${escapeHTML(product.name)}" onerror="this.onerror=null;this.src=NO_IMAGE">
         <div id="productGallery"></div>
         <div class="purchase-row">
-            <h2>${product.pricePending ? "Price pending" : "$" + Number(product.price).toFixed(2)}</h2>
+            <h2>${product.pricePending ? "Price Pending *" : "$" + Number(product.price).toFixed(2)}</h2>
             <button class="button" onclick="openOrderModal()">Add to Cart</button>
         </div>
 
+        ${product.pricePending ? `<p class="price-pending-note">* Price has not been confirmed. Contact the team organizer for pricing before ordering.</p>` : ""}
         <div id="orderModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="orderModalTitle">
             <div class="modal-content" style="max-height:80vh;overflow-y:auto;box-sizing:border-box;">
                 <button type="button" class="close" onclick="closeOrderModal()" aria-label="Close" style="background:none;border:none;color:white;">×</button>
