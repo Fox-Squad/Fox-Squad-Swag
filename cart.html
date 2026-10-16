@@ -69,10 +69,13 @@ body{
     <div id="cartItems"></div>
 
     <h2 id="cartTotal"></h2>
+    <p class="price-pending-note">* Items marked Price Pending do not have a confirmed price and are not included in the estimated total.</p>
 
     <div id="checkoutSection">
-        <label for="customerName"><strong>Name</strong></label><br>
-        <input id="customerName" type="text" required placeholder="Enter your name" style="padding:12px; border-radius:8px; border:1px solid #555; margin:8px 0 12px; width:min(320px, 90%); font-size:16px;">
+        <label for="customerFirstName"><strong>First name</strong></label><br>
+        <input id="customerFirstName" type="text" required autocomplete="given-name" placeholder="First name" style="padding:12px; border-radius:8px; border:1px solid #555; margin:8px 0 12px; width:min(320px, 90%); font-size:16px;"><br>
+        <label for="customerLastName"><strong>Last name</strong></label><br>
+        <input id="customerLastName" type="text" required autocomplete="family-name" placeholder="Last name" style="padding:12px; border-radius:8px; border:1px solid #555; margin:8px 0 12px; width:min(320px, 90%); font-size:16px;">
     </div>
 
     <div class="cart-actions"><a class="button" href="products.html">Continue Shopping</a>
@@ -105,7 +108,7 @@ function renderCart(){
             <div class="cart-item">
                 <h3>${escapeHTML(item.name)}</h3>
                 ${Object.entries(item.selections || {}).filter(([key,value])=>value).map(([key,value])=>`<p><strong>${escapeHTML(key)}:</strong> ${escapeHTML(value)}</p>`).join("")}
-                <p>Price: $${item.price}</p>
+                <p>Price: ${item.price == null || item.pricePending ? "Price Pending *" : "$" + Number(item.price).toFixed(2)}</p>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;">
                     <strong>Quantity:</strong>
                     <button class="button remove" style="padding:6px 12px;margin:0;" onclick="changeQuantity(${index}, -1)" aria-label="Decrease quantity">−</button>
@@ -165,18 +168,21 @@ function removeItem(index){
 
 async function submitOrder(){
     const cart = getCart();
-    const nameInput = document.getElementById("customerName");
+    const firstInput = document.getElementById("customerFirstName");
+    const lastInput = document.getElementById("customerLastName");
     const submitButton = document.getElementById("submitOrderButton");
-    const customerName = nameInput.value.trim();
+    const firstName = firstInput.value.trim();
+    const lastName = lastInput.value.trim();
+    const customerName = firstName + " " + lastName;
 
     if(cart.length === 0){
         alert("Your cart is empty.");
         return;
     }
 
-    if(!customerName){
+    if(!firstName || !lastName){
         alert("Please enter your name before submitting your order.");
-        nameInput.focus();
+        (!firstName ? firstInput : lastInput).focus();
         return;
     }
 
@@ -196,6 +202,8 @@ async function submitOrder(){
             },
             body: JSON.stringify({
                 customerName: customerName,
+                firstName: firstName,
+                lastName: lastName,
                 items: cart,
                 orderTotal: orderTotal
             })
@@ -204,7 +212,8 @@ async function submitOrder(){
         saveCart([]);
         updateCartCount();
         renderCart();
-        nameInput.value = "";
+        firstInput.value = "";
+        lastInput.value = "";
         alert("Order submitted! Thank you, " + customerName + ".");
     } catch(error) {
         console.error("Order submission failed:", error);
