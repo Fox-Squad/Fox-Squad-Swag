@@ -104,7 +104,7 @@ async function loadProducts() {
 
     const [productResponse, imageRows] = await Promise.all([
         fetch(PRODUCT_SHEET_URL, { cache: "no-store" }),
-        publishedTab("1245001669")
+        publishedTab("1245001669").catch(error => { console.warn("Images unavailable; using placeholders", error); return []; })
     ]);
 
     if (!productResponse.ok) throw new Error("Could not load the published catalog");
