@@ -155,7 +155,7 @@ function editItem(index){
         item: cart[index]
     }));
 
-    window.location.href = "product.html?id=" + encodeURIComponent(makeProductId(cart[index].name)) + "&edit=" + index;
+    window.location.href = "product.html?id=" + encodeURIComponent((cart[index].productId || makeProductId(cart[index].name))) + "&edit=" + index;
 }
 
 function removeItem(index){
