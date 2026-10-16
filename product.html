@@ -73,7 +73,7 @@ async function loadProduct(){
 
     const product =
         products.find(p =>
-            makeProductId(p.name) === productId
+            (p.id === productId || makeProductId(p.name) === productId)
         );
 
     if(!product){
@@ -324,6 +324,7 @@ function addConfiguredProduct(){
     const optionEntries = currentProduct.orderFields.filter(field=>!field.groupHeading).map(field=>({id:field.id,label:field.label,group:field.currentGroup || "",value:document.getElementById(field.id).value}));
     const configuredItem = {
         name: currentProduct.name,
+        productId: currentProduct.id,
         price: currentProduct.price,
         quantity: Number(document.getElementById("orderQuantity").value),
         selections: selections,
