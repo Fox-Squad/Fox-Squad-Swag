@@ -76,13 +76,10 @@ body{
         <input id="customerFirstName" type="text" required autocomplete="given-name" placeholder="First name" style="padding:12px; border-radius:8px; border:1px solid #555; margin:8px 0 12px; width:min(320px, 90%); font-size:16px;"><br>
         <label for="customerLastName"><strong>Last name</strong></label><br>
         <input id="customerLastName" type="text" required autocomplete="family-name" placeholder="Last name" style="padding:12px; border-radius:8px; border:1px solid #555; margin:8px 0 12px; width:min(320px, 90%); font-size:16px;">
-        <label for="customerEmail"><strong>Email address</strong></label><br>
-        <input id="customerEmail" type="email" required autocomplete="email" placeholder="you@example.com" style="padding:12px; border-radius:8px; border:1px solid #555; margin:8px 0 12px; width:min(320px, 90%); font-size:16px;">
-        <p style="color:#bbb;font-size:14px;">Use the same email for future order updates. Secure order retrieval is being configured.</p>
     </div>
 
     <div class="cart-actions"><a class="button" href="products.html">Continue Shopping</a>
-    <button class="button" id="submitOrderButton" onclick="submitOrder()">Submit Order</button></div>
+    <button class="button" id="submitOrderButton" onclick="submitOrder()" disabled>Submit Order</button></div>
 </div>
 
 <script src="app.js?v=images-folder-20261007"></script>
@@ -98,6 +95,7 @@ function renderCart(){
 
     if(cart.length === 0){
         cartItems.innerHTML = "<p>Your cart is empty.</p>";
+        updateOrderButton();
         cartTotal.textContent = "";
         return;
     }
@@ -105,7 +103,7 @@ function renderCart(){
     let total = 0;
 
     cart.forEach((item, index) => {
-        total += item.price * item.quantity;
+        total += (Number(item.price) || 0) * item.quantity;
 
         cartItems.innerHTML += `
             <div class="cart-item">
@@ -118,7 +116,7 @@ function renderCart(){
                     <span style="min-width:24px;text-align:center;font-weight:bold;">${item.quantity}</span>
                     <button class="button" style="padding:6px 12px;margin:0;" onclick="changeQuantity(${index}, 1)" aria-label="Increase quantity">+</button>
                 </div>
-                <p>Subtotal: ${(item.price * item.quantity).toFixed(2)}</p>
+                <p>Subtotal: ${((Number(item.price) || 0) * item.quantity).toFixed(2)}</p>
                 <button class="button" onclick="editItem(${index})">Edit</button>
                 <button class="button remove" onclick="removeItem(${index})">Remove</button>
             </div>
@@ -126,6 +124,7 @@ function renderCart(){
     });
 
     cartTotal.textContent = "Total: $" + total.toFixed(2);
+    updateOrderButton();
 }
 
 function changeQuantity(index, change){
@@ -169,62 +168,87 @@ function removeItem(index){
     renderCart();
 }
 
-async function submitOrder(){
+const ORDER_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzRenQBIbiJtYwwOnSSuZVTRdLSmkcgj7TdKY3IKjsVcmLaucNkUKAAtDhzGEH57QY2YA/exec";
+const ORDER_STORAGE_KEY = "foxSquadLastSubmission";
+const ORDER_ID_KEY = "foxSquadOrderId";
+const firstInput = document.getElementById("customerFirstName");
+const lastInput = document.getElementById("customerLastName");
+const submitButton = document.getElementById("submitOrderButton");
+let sendingOrder = false;
+function orderSnapshot(){
+    return JSON.stringify({
+        firstName: firstInput.value.trim(),
+        lastName: lastInput.value.trim(),
+        items: getCart()
+    });
+}
+function previousSubmission(){
+    try { return JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || "null"); }
+    catch(error){ return null; }
+}
+function updateOrderButton(){
+    const prior = previousSubmission();
+    submitButton.textContent = sendingOrder ? "Sending..." : prior ? "Update Order" : "Submit Order";
     const cart = getCart();
-    const firstInput = document.getElementById("customerFirstName");
-    const lastInput = document.getElementById("customerLastName");
-    const emailInput = document.getElementById("customerEmail");
-    const submitButton = document.getElementById("submitOrderButton");
+    const valid = cart.length > 0 && cart.every(item =>
+        item.name && Number.isInteger(Number(item.quantity)) && Number(item.quantity) > 0 &&
+        (item.pricePending || (item.price !== null && Number.isFinite(Number(item.price))))
+    ) && firstInput.value.trim() && lastInput.value.trim();
+    submitButton.disabled = Boolean(sendingOrder || !valid || (prior && prior.snapshot === orderSnapshot()));
+    submitButton.style.opacity = submitButton.disabled ? "0.4" : "1";
+    submitButton.style.cursor = submitButton.disabled ? "not-allowed" : "pointer";
+}
+function getOrderId(){
+    let id = localStorage.getItem(ORDER_ID_KEY);
+    if(!id){
+        if(!window.crypto || !crypto.randomUUID) throw new Error("A secure order ID could not be generated.");
+        id = "FS-" + crypto.randomUUID();
+        localStorage.setItem(ORDER_ID_KEY, id);
+    }
+    return id;
+}
+async function submitOrder(){
+    updateOrderButton();
+    if(submitButton.disabled) return;
+    const cart = getCart();
+    const prior = previousSubmission();
     const firstName = firstInput.value.trim();
     const lastName = lastInput.value.trim();
     const customerName = firstName + " " + lastName;
-    const customerEmail = emailInput.value.trim().toLowerCase();
-
-    if(cart.length === 0){
-        alert("Your cart is empty.");
-        return;
-    }
-
-    if(!firstName || !lastName || !emailInput.validity.valid || !customerEmail){
-        alert("Please enter your name before submitting your order.");
-        (!firstName ? firstInput : !lastName ? lastInput : emailInput).focus();
-        return;
-    }
-
-    const orderTotal = cart.reduce((total, item) => {
-        return total + (Number(item.price) * Number(item.quantity));
-    }, 0);
-
-    submitButton.disabled = true;
-    submitButton.textContent = "Submitting...";
-
+    const snapshot = orderSnapshot();
+    const orderTotal = cart.reduce((total, item) => total + (Number(item.price) || 0) * Number(item.quantity), 0);
+    sendingOrder = true;
+    updateOrderButton();
     try {
-        await fetch("https://script.google.com/macros/s/AKfycbzRenQBIbiJtYwwOnSSuZVTRdLSmkcgj7TdKY3IKjsVcmLaucNkUKAAtDhzGEH57QY2YA/exec", {
-            method: "POST",
-            mode: "no-cors",
-            headers: {
-                "Content-Type": "text/plain;charset=utf-8"
-            },
-            body: JSON.stringify({
-                customerName: customerName,
-                firstName: firstName,
-                lastName: lastName,
-                customerEmail: customerEmail,
-                items: cart,
-                orderTotal: orderTotal
+        const orderId = getOrderId();
+        await fetch(ORDER_SCRIPT_URL, {
+            method:"POST", mode:"no-cors",
+            headers:{"Content-Type":"text/plain;charset=utf-8"},
+            body:JSON.stringify({
+                orderId, action:prior ? "update" : "submit",
+                customerName, firstName, lastName, items:cart, orderTotal
             })
         });
-
-        localStorage.setItem("foxSquadLastSubmission", JSON.stringify({customerName,customerEmail,items:cart,submittedAt:new Date().toISOString()}));
-        alert("Order request sent. Your cart has been kept so you can review it. Please confirm with the organizer that your order was received; automatic confirmation and email recall are not active yet.");
-    } catch(error) {
-        console.error("Order submission failed:", error);
-        alert("There was a problem submitting your order. Please try again.");
+        // A no-cors response cannot confirm whether the spreadsheet accepted the update.
+        localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify({
+            orderId, firstName, lastName, items:cart, snapshot, submittedAt:new Date().toISOString()
+        }));
+        alert("Order request sent. Your cart has been saved on this browser. Please confirm with the organizer that the " + (prior ? "update" : "order") + " was received.");
+    } catch(error){
+        console.error("Order submission failed:",error);
+        alert("The request could not be sent. Your cart is still saved.");
     } finally {
-        submitButton.disabled = false;
-        submitButton.textContent = "Submit Order";
+        sendingOrder = false;
+        updateOrderButton();
     }
 }
+const savedOrder = previousSubmission();
+if(savedOrder){
+    firstInput.value = savedOrder.firstName || "";
+    lastInput.value = savedOrder.lastName || "";
+}
+firstInput.addEventListener("input", updateOrderButton);
+lastInput.addEventListener("input", updateOrderButton);
 
 renderCart();
 </script>
